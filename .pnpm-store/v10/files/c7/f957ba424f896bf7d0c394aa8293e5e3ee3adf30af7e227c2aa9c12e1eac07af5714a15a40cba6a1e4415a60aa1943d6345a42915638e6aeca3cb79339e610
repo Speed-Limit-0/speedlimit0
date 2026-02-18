@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/lib/utils/window-open.ts"],
+  "sourcesContent": ["import { runtime } from './runtime'\n\n/**\n * Open a new window with the given URL and target. Prefer this to the window.open function, as it\n * will work more reliably in embedded scenarios, such as our VS Code extension. See the runtime\n * object in tldraw/editor for more details.\n *\n * @param url - The URL to open.\n * @param target - The target window to open the URL in.\n * @param allowReferrer - Whether to allow the referrer to be sent to the new window.\n * @returns The new window object.\n * @public\n */\nexport function openWindow(url: string, target = '_blank', allowReferrer?: boolean) {\n\treturn runtime.openWindow(url, target, allowReferrer)\n}\n"],
+  "mappings": "AAAA,SAAS,eAAe;AAajB,SAAS,WAAW,KAAa,SAAS,UAAU,eAAyB;AACnF,SAAO,QAAQ,WAAW,KAAK,QAAQ,aAAa;AACrD;",
+  "names": []
+}

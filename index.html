@@ -9,28 +9,51 @@
     <link rel="stylesheet" href="/src/styles.css" />
 </head>
 
-<body class="bg-white text-neutral-900 min-h-screen antialiased">
+<body class="bg-white text-neutral-900 min-h-screen antialiased" style="cursor: crosshair;">
     <div id="app" class="max-w-2xl mx-auto px-6 pt-24 pb-16">
 
-        <header class="mb-16 flex items-start justify-between">
+        <header class="mb-16 flex items-start justify-between gap-6">
             <div>
                 <h1 class="text-2xl font-medium tracking-tight mb-2">Speed Limit 0</h1>
                 <p class="text-neutral-500 text-sm leading-relaxed max-w-sm">
                     A shared lab for prototype explorations. Each entry is a self-contained experiment.
                 </p>
             </div>
-            <button id="new-exploration-btn"
-                class="px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors shadow-sm">
-                New Exploration
-            </button>
+            <div class="flex flex-wrap items-center justify-end gap-3">
+                <div class="flex w-[11rem] flex-col gap-3">
+                    <button id="view-toggle" type="button" role="switch" aria-label="View: recents or canvas" aria-checked="false"
+                        class="w-full rounded-full border border-neutral-100 bg-white p-1 text-xs font-medium">
+                        <span id="view-toggle-track" class="relative grid w-full grid-cols-[1.2fr_1fr] rounded-full">
+                            <span data-view-option="list"
+                                class="relative z-10 flex items-center justify-center rounded-full py-1.5 text-center transition-colors duration-200">Recents</span>
+                            <span data-view-option="canvas"
+                                class="relative z-10 flex items-center justify-center rounded-full py-1.5 text-center transition-colors duration-200">Canvas</span>
+                            <span id="view-toggle-thumb" aria-hidden="true"
+                                class="absolute inset-y-0 left-0 z-0 rounded-full bg-neutral-100 transition-[transform,width] duration-200 ease-out"></span>
+                        </span>
+                    </button>
+                    <button id="new-exploration-btn"
+                        class="w-full px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors shadow-sm">
+                        New Exploration
+                    </button>
+                </div>
+            </div>
         </header>
 
-        <main id="explorations-container">
-            <div class="py-12 text-center text-neutral-400 text-sm font-mono animate-pulse">loading…</div>
+        <main id="explorations-container" class="space-y-6">
+            <div id="explorations-list" class="flex flex-col gap-4">
+                <div class="py-12 text-center text-neutral-400 text-sm font-mono animate-pulse">loading…</div>
+            </div>
         </main>
-
-        <div id="counter" class="mt-10 text-xs text-neutral-400 font-mono"></div>
     </div>
+
+    <section id="explorations-canvas"
+        class="fixed left-0 bottom-0 hidden bg-neutral-50/60 overflow-hidden z-10 w-screen"
+        style="top: var(--canvas-top, 14rem);"
+        aria-hidden="true">
+        <div id="canvas-stage" class="absolute inset-0 w-full min-h-full origin-top-left cursor-grab touch-none"
+            style="will-change: transform;"></div>
+    </section>
 
     <!-- Action Modal -->
     <div id="action-modal"

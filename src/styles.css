@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+html {
+    scrollbar-gutter: stable;
+}
+
+/* No scrollbar gutter in canvas view so the canvas spans edge-to-edge */
+html.canvas-view {
+    scrollbar-gutter: auto;
+    overflow-x: hidden;
+}
+
 @theme {
     --animate-fade-in: fade-in 0.4s ease-out both;
 }

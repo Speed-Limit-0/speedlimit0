@@ -10,6 +10,29 @@ html.canvas-view {
     overflow-x: hidden;
 }
 
+.canvas-card--selected {
+    border-color: #0f172a;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.15);
+    z-index: 2;
+}
+
+.canvas-selection-box {
+    position: absolute;
+    border: 1px dashed #0f172a;
+    background: rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.canvas-space-pan {
+    cursor: grab;
+}
+
+.canvas-space-pan:active {
+    cursor: grabbing;
+}
+
 @theme {
     --animate-fade-in: fade-in 0.4s ease-out both;
 }

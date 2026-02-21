@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/src/styles.css" />
 </head>
 
-<body class="bg-white text-neutral-900 min-h-screen antialiased" style="cursor: crosshair;">
+    <body class="bg-white text-neutral-900 min-h-screen antialiased">
     <div id="app" class="max-w-2xl mx-auto px-6 pt-24 pb-16">
 
         <header class="mb-16 flex items-start justify-between gap-6">
@@ -51,8 +51,9 @@
         class="fixed left-0 bottom-0 hidden bg-neutral-50/60 overflow-hidden z-10 w-screen"
         style="top: var(--canvas-top, 14rem);"
         aria-hidden="true">
-        <div id="canvas-stage" class="absolute inset-0 w-full min-h-full origin-top-left cursor-grab touch-none"
-            style="will-change: transform;"></div>
+        <div id="canvas-pan" class="absolute inset-0 touch-none" style="will-change: transform;">
+            <div id="canvas-stage" class="absolute inset-0 w-full min-h-full origin-top-left"></div>
+        </div>
     </section>
 
     <!-- Action Modal -->
@@ -86,7 +87,30 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal"
+        class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200"
+        aria-hidden="true">
+        <div id="delete-modal-content"
+            class="bg-white border border-neutral-100 shadow-2xl rounded-3xl p-8 w-full max-w-sm transform scale-95 transition-transform duration-200">
+            <h2 class="text-xl font-medium tracking-tight mb-3 text-neutral-900">Delete selected items?</h2>
+            <p class="text-sm text-neutral-500 mb-6">Press Delete again to confirm.</p>
+            <div class="flex items-center justify-end gap-2">
+                <button id="delete-modal-cancel"
+                    class="px-4 py-2 rounded-full text-xs font-semibold border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:border-neutral-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="delete-modal-confirm"
+                    class="px-4 py-2 rounded-full text-xs font-semibold bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="agentation-root"></div>
     <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/agentation-root.jsx"></script>
 </body>
 
 </html>

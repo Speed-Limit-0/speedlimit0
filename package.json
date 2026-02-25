@@ -21,10 +21,15 @@
         ]
     },
     "dependencies": {
+        "@react-three/drei": "^10.7.7",
+        "@react-three/fiber": "^9.5.0",
+        "@react-three/postprocessing": "^3.0.4",
         "@tldraw/editor": "^4.4.0",
         "@tldraw/validate": "^4.4.0",
+        "postprocessing": "^6.38.3",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
+        "three": "^0.183.1",
         "tldraw": "^4.4.0"
     }
 }

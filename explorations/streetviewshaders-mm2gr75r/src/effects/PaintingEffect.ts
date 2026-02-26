@@ -2,10 +2,15 @@
  * Oil Painting Effect — Fast 4-Quadrant Kuwahara Filter.
  *
  * Optional post-painting filters: saturation, contrast, brightness, vignette, temperature.
- * Palette / gradient-map presets (LUT-style) remap colors by luminance to a themed palette.
+ * Palette / gradient-map presets (LUT-style). Preset 9 = Custom (use uCustomShadow/Mid/Highlight).
  */
+import * as THREE from 'three';
 import { Uniform } from 'three';
 import { Effect } from 'postprocessing';
+
+const DEFAULT_CUSTOM_SHADOW = new THREE.Color(0.12, 0.08, 0.05);
+const DEFAULT_CUSTOM_MID = new THREE.Color(0.5, 0.42, 0.32);
+const DEFAULT_CUSTOM_HIGHLIGHT = new THREE.Color(0.92, 0.82, 0.65);
 
 const paintingFragment = /* glsl */ `
   uniform float uScale;
@@ -18,10 +23,17 @@ const paintingFragment = /* glsl */ `
   uniform float uTemperature;
   uniform float uPalette;
   uniform float uPaletteAmount;
+  uniform vec3 uCustomShadow;
+  uniform vec3 uCustomMid;
+  uniform vec3 uCustomHighlight;
 
   // Gradient map: map luminance to a 2- or 3-stop palette. Returns color for given luma and preset index.
   vec3 gradientMap(float luma, int preset) {
-    // Shadow, mid, highlight colors per preset (approximate)
+    // Custom (preset 9): use uniforms
+    if (preset == 9) {
+      if (luma < 0.5) return mix(uCustomShadow, uCustomMid, luma * 2.0);
+      return mix(uCustomMid, uCustomHighlight, (luma - 0.5) * 2.0);
+    }
     if (preset == 1) { // Sepia
       vec3 shadow = vec3(0.12, 0.08, 0.05);
       vec3 mid    = vec3(0.5, 0.42, 0.32);
@@ -127,6 +139,9 @@ export interface PaintingEffectOptions {
     temperature?: number;
     palette?: number;
     paletteAmount?: number;
+    customShadow?: THREE.Color;
+    customMid?: THREE.Color;
+    customHighlight?: THREE.Color;
 }
 
 export class PaintingEffect extends Effect {
@@ -141,6 +156,9 @@ export class PaintingEffect extends Effect {
         temperature = 0.0,
         palette = 0,
         paletteAmount = 1.0,
+        customShadow = DEFAULT_CUSTOM_SHADOW.clone(),
+        customMid = DEFAULT_CUSTOM_MID.clone(),
+        customHighlight = DEFAULT_CUSTOM_HIGHLIGHT.clone(),
     }: PaintingEffectOptions = {}) {
         const uniforms = new Map([
             ['uScale', new Uniform(scale)],
@@ -153,6 +171,9 @@ export class PaintingEffect extends Effect {
             ['uTemperature', new Uniform(temperature)],
             ['uPalette', new Uniform(palette)],
             ['uPaletteAmount', new Uniform(paletteAmount)],
+            ['uCustomShadow', new Uniform(customShadow.clone())],
+            ['uCustomMid', new Uniform(customMid.clone())],
+            ['uCustomHighlight', new Uniform(customHighlight.clone())],
         ]);
 
         super('PaintingEffect', paintingFragment, { uniforms });
@@ -187,5 +208,14 @@ export class PaintingEffect extends Effect {
     }
     set paletteAmount(v: number) {
         this.uniforms.get('uPaletteAmount')!.value = v;
+    }
+    set customShadow(v: THREE.Color) {
+        (this.uniforms.get('uCustomShadow')!.value as THREE.Color).copy(v);
+    }
+    set customMid(v: THREE.Color) {
+        (this.uniforms.get('uCustomMid')!.value as THREE.Color).copy(v);
+    }
+    set customHighlight(v: THREE.Color) {
+        (this.uniforms.get('uCustomHighlight')!.value as THREE.Color).copy(v);
     }
 }

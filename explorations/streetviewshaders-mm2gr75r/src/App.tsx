@@ -23,7 +23,7 @@ const FILTERS: { id: FilterType; label: string; icon: string }[] = [
     { id: 'halftone', label: 'Halftone', icon: '◉' },
 ];
 
-// Palette / gradient-map presets for the painting effect (LUT-style). id 0 = no palette.
+// Palette / gradient-map presets for the painting effect (LUT-style). id 0 = no palette. 9 = Custom (user colors).
 const PAINTING_PALETTES: { id: number; label: string }[] = [
     { id: 0, label: 'None' },
     { id: 1, label: 'Sepia' },
@@ -34,6 +34,7 @@ const PAINTING_PALETTES: { id: number; label: string }[] = [
     { id: 6, label: 'Vintage' },
     { id: 7, label: 'Muted' },
     { id: 8, label: 'Warm Film' },
+    { id: 9, label: 'Custom' },
 ];
 
 // ─── Google Maps JS API loader (Street View metadata only) ────────────────────
@@ -372,6 +373,9 @@ function PaintingPass({
     temperature,
     palette,
     paletteAmount,
+    customShadowHex,
+    customMidHex,
+    customHighlightHex,
 }: {
     scale: number;
     sharpness: number;
@@ -383,7 +387,14 @@ function PaintingPass({
     temperature: number;
     palette: number;
     paletteAmount: number;
+    customShadowHex: string;
+    customMidHex: string;
+    customHighlightHex: string;
 }) {
+    const customShadow = useMemo(() => new THREE.Color(customShadowHex), [customShadowHex]);
+    const customMid = useMemo(() => new THREE.Color(customMidHex), [customMidHex]);
+    const customHighlight = useMemo(() => new THREE.Color(customHighlightHex), [customHighlightHex]);
+
     const effect = useMemo(
         () =>
             new PaintingEffect({
@@ -397,6 +408,9 @@ function PaintingPass({
                 temperature,
                 palette,
                 paletteAmount,
+                customShadow,
+                customMid,
+                customHighlight,
             }),
         [],
     );
@@ -431,6 +445,15 @@ function PaintingPass({
     useEffect(() => {
         effect.paletteAmount = paletteAmount;
     }, [paletteAmount, effect]);
+    useEffect(() => {
+        effect.customShadow = customShadow;
+    }, [customShadow, effect]);
+    useEffect(() => {
+        effect.customMid = customMid;
+    }, [customMid, effect]);
+    useEffect(() => {
+        effect.customHighlight = customHighlight;
+    }, [customHighlight, effect]);
 
     return <primitive object={effect} />;
 }
@@ -582,6 +605,9 @@ export default function App() {
     const [paintTemperature, setPaintTemperature] = useState(0.0);
     const [paintPalette, setPaintPalette] = useState(0);
     const [paintPaletteAmount, setPaintPaletteAmount] = useState(1.0);
+    const [paintPaletteShadow, setPaintPaletteShadow] = useState('#1f150d');
+    const [paintPaletteMid, setPaintPaletteMid] = useState('#806b52');
+    const [paintPaletteHighlight, setPaintPaletteHighlight] = useState('#ebd1a6');
 
     // Halftone
     const [dotSize, setDotSize] = useState(6.0);
@@ -842,6 +868,9 @@ export default function App() {
                             temperature={paintTemperature}
                             palette={paintPalette}
                             paletteAmount={paintPaletteAmount}
+                            customShadowHex={paintPaletteShadow}
+                            customMidHex={paintPaletteMid}
+                            customHighlightHex={paintPaletteHighlight}
                         />
                     )}
                     {filter === 'halftone' && (
@@ -1152,6 +1181,25 @@ export default function App() {
                                     fmt={(v) => (v === 0 ? 'off' : `${Math.round(v * 100)}%`)}
                                     onChange={setPaintPaletteAmount}
                                 />
+                                {paintPalette === 9 && (
+                                    <>
+                                        <ColorPicker
+                                            label="Shadow"
+                                            value={paintPaletteShadow}
+                                            onChange={setPaintPaletteShadow}
+                                        />
+                                        <ColorPicker
+                                            label="Mid"
+                                            value={paintPaletteMid}
+                                            onChange={setPaintPaletteMid}
+                                        />
+                                        <ColorPicker
+                                            label="Highlight"
+                                            value={paintPaletteHighlight}
+                                            onChange={setPaintPaletteHighlight}
+                                        />
+                                    </>
+                                )}
                             </>
                         )}
 

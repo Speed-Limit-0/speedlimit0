@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hello World — Speed Limit 0</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <style>
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url(/noise.png);
+            background-repeat: repeat;
+            background-size: 220px 220px;
+            mix-blend-mode: soft-light;
+            opacity: 0.22;
+            animation: noise-animation 120ms steps(1) infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes noise-animation {
+            0% { background-position: 0 0; }
+            12.5% { background-position: -120px 80px; }
+            25% { background-position: 200px -160px; }
+            37.5% { background-position: -260px -40px; }
+            50% { background-position: 80px 180px; }
+            62.5% { background-position: -190px 240px; }
+            75% { background-position: 260px 40px; }
+            87.5% { background-position: -320px -200px; }
+            100% { background-position: 0 0; }
+        }
+    </style>
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search)
+            if (!params.has('preview')) return
+            const originalRAF = window.requestAnimationFrame.bind(window)
+            let rafCount = 0
+            let lastCb = null
+            window.requestAnimationFrame = (cb) => {
+                lastCb = cb
+                if (rafCount >= 1) return 0
+                rafCount += 1
+                return originalRAF((time) => cb(time))
+            }
+        })()
+    </script>
+</head>
+
+<body class="bg-white m-0 p-0 overflow-hidden w-screen h-screen relative">
+    <canvas id="c" class="block w-full h-full"></canvas>
+    <div class="noise-overlay" aria-hidden="true"></div>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>

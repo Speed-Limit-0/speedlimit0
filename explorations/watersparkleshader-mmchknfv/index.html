@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hello World — Speed Limit 0</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search)
+            if (!params.has('preview')) return
+            const originalRAF = window.requestAnimationFrame.bind(window)
+            let rafCount = 0
+            let lastCb = null
+            window.requestAnimationFrame = (cb) => {
+                lastCb = cb
+                if (rafCount >= 1) return 0
+                rafCount += 1
+                return originalRAF((time) => cb(time))
+            }
+        })()
+    </script>
+</head>
+
+<body class="bg-white m-0 p-0 overflow-hidden w-screen h-screen">
+    <canvas id="c" class="block w-full h-full"></canvas>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>

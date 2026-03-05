@@ -20,15 +20,15 @@ const params = {
     contentRotationY: 0,
     
     // Grass geometry & density
-    bladeWidth: 0.08019,
-    bladeHeight: 1.0593,
-    instanceCount: 76000,
-    fieldSize: 45.22,
-    groundColor: '#2a6f58',
+    bladeWidth: 0.12,
+    bladeHeight: 1.9,
+    instanceCount: 22000,
+    fieldSize: 35,
+    groundColor: '#24755a',
     
     // Dandelion settings
-    dandelionCount: 500,
-    dandelionStemColor: '#4a7c59',
+    dandelionCount: 120,
+    dandelionStemColor: '#649673',
     dandelionFlowerColor: '#ffde21',
     dandelionWhiteColor: '#f0f0f0',
     
@@ -43,24 +43,24 @@ const params = {
     gentleBreeze: 0.15,
     
     // Grass lighting gradient (colors)
-    baseColor: '#031c16',          // Very dark green roots
-    tipColor: '#199a39',           // Vibrant mid green tips
-    windHighlightColor: '#e9ff99', // Bright lime/yellow for wind waves
-    greenVariationStrength: 0.192,  // 0 = none, 1 = full warm/cool variation
-    warmTint: '#f3ffa3',          // Warmer (yellower) green
-    coolTint: '#234337',          // Cooler (teal) green
+    baseColor: '#086852',
+    tipColor: '#0c8814',
+    windHighlightColor: '#e9ff99',
+    greenVariationStrength: 0.27,
+    warmTint: '#f3ffa3',
+    coolTint: '#073122',
     
     // Debug lighting gradient map (post-process)
-    gradientMapEnabled: false,
-    gradientStrength: 1.0,
-    gradientShadowColor: '#0a1020',
-    gradientMidColor: '#88b36f',
+    gradientMapEnabled: true,
+    gradientStrength: 0,
+    gradientShadowColor: '#005470',
+    gradientMidColor: '#ffd1d1',
     gradientHighlightColor: '#ffe8a8',
     
     // Kuwahara final pass (painterly / edge-preserving blur)
     kuwaharaEnabled: true,
-    kuwaharaRadius: 6,
-    kuwaharaRadiusY: 16,
+    kuwaharaRadius: 4,
+    kuwaharaRadiusY: 8,
     
     // Performance
     targetFPS: 24,
@@ -144,7 +144,10 @@ scene.background = new THREE.Color(0xa7d8ff); // Stylized painted sky blue
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
 
-const aspect = window.innerWidth / window.innerHeight;
+const BASE_WIDTH = 1200;
+const BASE_HEIGHT = 800;
+
+const aspect = BASE_WIDTH / BASE_HEIGHT;
 const camera = new THREE.OrthographicCamera(
     -params.frustumSize * aspect, 
     params.frustumSize * aspect, 
@@ -156,7 +159,7 @@ camera.position.set(params.cameraX, params.cameraY, params.cameraZ);
 camera.lookAt(params.targetX, params.targetY, params.targetZ);
 
 function updateCameraFrustum() {
-    const aspect = window.innerWidth / window.innerHeight;
+    const aspect = BASE_WIDTH / BASE_HEIGHT;
     camera.left = -params.frustumSize * aspect;
     camera.right = params.frustumSize * aspect;
     camera.top = params.frustumSize;
@@ -165,14 +168,11 @@ function updateCameraFrustum() {
 }
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(BASE_WIDTH, BASE_HEIGHT, false);
+renderer.setPixelRatio(1);
 
 function getPixelSize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const pr = renderer.getPixelRatio();
-    return { width: Math.floor(w * pr), height: Math.floor(h * pr) };
+    return { width: BASE_WIDTH, height: BASE_HEIGHT };
 }
 
 const pixelSize = getPixelSize();
@@ -396,13 +396,7 @@ function syncCameraFromParams() {
 }
 
 window.addEventListener('resize', () => {
-    updateCameraFrustum();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    const size = getPixelSize();
-    renderTarget.setSize(size.width, size.height);
-    postTarget.setSize(size.width, size.height);
-    postUniforms.uResolution.value.set(size.width, size.height);
-    kuwaharaUniforms.uResolution.value.set(size.width, size.height);
+    // Canvas resolution is fixed; CSS handles physical scaling.
 });
 
 // 2. Ground Plane
@@ -426,11 +420,11 @@ const uniforms = {
     
     // Wind parameters (bound to GUI)
     uMacroScale: { value: params.macroScale },
-    uMacroSpeed: { value: params.macroSpeed },
+    uMacroOffset: { value: 0.0 },
     uMidScale: { value: params.midScale },
-    uMidSpeed: { value: params.midSpeed },
+    uMidOffset: { value: 0.0 },
     uDetailScale: { value: params.detailScale },
-    uDetailSpeed: { value: params.detailSpeed },
+    uDetailOffset: { value: 0.0 },
     uWindBend: { value: params.windBend },
     uGentleBreeze: { value: params.gentleBreeze },
 
@@ -451,11 +445,11 @@ const uniforms = {
 const vertexShader = `
 uniform float uTime;
 uniform float uMacroScale;
-uniform float uMacroSpeed;
+uniform float uMacroOffset;
 uniform float uMidScale;
-uniform float uMidSpeed;
+uniform float uMidOffset;
 uniform float uDetailScale;
-uniform float uDetailSpeed;
+uniform float uDetailOffset;
 uniform float uWindBend;
 uniform float uGentleBreeze;
 
@@ -508,8 +502,8 @@ void main() {
     
     vec3 localPos = position;
     
-    // Taper the blade width towards the tip
-    float widthMultiplier = 1.0 - (vHeight * 0.8);
+    // Shape the blade: smooth continuous taper to a rounded tip
+    float widthMultiplier = pow(1.0 - vHeight, 0.5);
     localPos.x *= widthMultiplier;
     
     // Apply initial random rotation around Y axis
@@ -534,15 +528,15 @@ void main() {
     vec2 dir3 = normalize(vec2(0.5, -0.6));  // Swirling/breaking wind
     
     // 1. Macro-wave (Massive, slow rolling gusts)
-    float n1 = snoise((worldPosXZ * uMacroScale) - (dir1 * uTime * uMacroSpeed));
+    float n1 = snoise((worldPosXZ * uMacroScale) - (dir1 * uMacroOffset));
     n1 = (n1 + 1.0) * 0.5;
     
     // 2. Mid-wave (Breaks up the uniform bands)
-    float n2 = snoise((worldPosXZ * uMidScale) - (dir2 * uTime * uMidSpeed));
+    float n2 = snoise((worldPosXZ * uMidScale) - (dir2 * uMidOffset));
     n2 = (n2 + 1.0) * 0.5;
     
     // 3. Detail-wave (Adds organic chaos and swirling)
-    float n3 = snoise((worldPosXZ * uDetailScale) - (dir3 * uTime * uDetailSpeed));
+    float n3 = snoise((worldPosXZ * uDetailScale) - (dir3 * uDetailOffset));
     n3 = (n3 + 1.0) * 0.5;
     
     // Original noise force
@@ -640,11 +634,11 @@ void main() {
 const dandelionUniforms = {
     uTime: uniforms.uTime,
     uMacroScale: uniforms.uMacroScale,
-    uMacroSpeed: uniforms.uMacroSpeed,
+    uMacroOffset: uniforms.uMacroOffset,
     uMidScale: uniforms.uMidScale,
-    uMidSpeed: uniforms.uMidSpeed,
+    uMidOffset: uniforms.uMidOffset,
     uDetailScale: uniforms.uDetailScale,
-    uDetailSpeed: uniforms.uDetailSpeed,
+    uDetailOffset: uniforms.uDetailOffset,
     uWindBend: uniforms.uWindBend,
     uGentleBreeze: uniforms.uGentleBreeze,
     uCursorPos: uniforms.uCursorPos,
@@ -658,11 +652,11 @@ const dandelionUniforms = {
 const dandelionVertexShader = `
 uniform float uTime;
 uniform float uMacroScale;
-uniform float uMacroSpeed;
+uniform float uMacroOffset;
 uniform float uMidScale;
-uniform float uMidSpeed;
+uniform float uMidOffset;
 uniform float uDetailScale;
-uniform float uDetailSpeed;
+uniform float uDetailOffset;
 uniform float uWindBend;
 uniform float uGentleBreeze;
 
@@ -740,11 +734,11 @@ void main() {
     vec2 dir2 = normalize(vec2(-0.2, 1.0));
     vec2 dir3 = normalize(vec2(0.5, -0.6));
     
-    float n1 = snoise((worldPosXZ * uMacroScale) - (dir1 * uTime * uMacroSpeed));
+    float n1 = snoise((worldPosXZ * uMacroScale) - (dir1 * uMacroOffset));
     n1 = (n1 + 1.0) * 0.5;
-    float n2 = snoise((worldPosXZ * uMidScale) - (dir2 * uTime * uMidSpeed));
+    float n2 = snoise((worldPosXZ * uMidScale) - (dir2 * uMidOffset));
     n2 = (n2 + 1.0) * 0.5;
-    float n3 = snoise((worldPosXZ * uDetailScale) - (dir3 * uTime * uDetailSpeed));
+    float n3 = snoise((worldPosXZ * uDetailScale) - (dir3 * uDetailOffset));
     n3 = (n3 + 1.0) * 0.5;
     
     vec2 noiseForce = (dir1 * n1 * 1.2) + (dir2 * n2 * 0.7) + (dir3 * n3 * 0.5);
@@ -814,11 +808,12 @@ function createDandelionGeometry() {
     const vHeights = [];
     const flowerParts = [];
     
-    const stemHeight = params.bladeHeight * 1.2; 
-    const stemWidth = params.bladeWidth * 0.3; 
-    const headRadius = 0.15; 
+    const stemHeight = params.bladeHeight * 0.75; 
+    const stemWidth = params.bladeWidth * 0.4; // Thinner stem
+    const headRadius = 0.16; 
     const centerY = stemHeight;
-    const segments = 16; // 8 spikes per plane
+    const numSpikes = 8;
+    const segments = 64; // Higher detail for rounded spikes
 
     function addPlane(rotationAngle) {
         const c = Math.cos(rotationAngle);
@@ -842,14 +837,19 @@ function createDandelionGeometry() {
         positions.push(rx2, 0, rz2); vHeights.push(0); flowerParts.push(0);
         positions.push(rx2, stemHeight, rz2); vHeights.push(1); flowerParts.push(0);
 
-        // Head
+        // Head (rounded petals/spikes)
         for (let i = 0; i < segments; i++) {
             const angle1 = (i / segments) * Math.PI * 2;
             const angle2 = ((i + 1) / segments) * Math.PI * 2;
             
-            // Alternate radius to create a spiky star/asterisk shape
-            const r1 = (i % 2 === 0) ? headRadius : headRadius * 0.1;
-            const r2 = ((i + 1) % 2 === 0) ? headRadius : headRadius * 0.1;
+            // Use a smooth power-cosine function to create thick, rounded petals
+            const getRadius = (a) => {
+                const spike = Math.abs(Math.cos(a * numSpikes / 2));
+                return headRadius * (0.1 + 0.9 * Math.pow(spike, 1.5)); // Higher power = thinner petals
+            };
+            
+            const r1 = getRadius(angle1);
+            const r2 = getRadius(angle2);
             
             const hx1 = Math.cos(angle1) * r1;
             const hy1 = centerY + Math.sin(angle1) * r1;
@@ -867,7 +867,7 @@ function createDandelionGeometry() {
     }
 
     // Intersecting planes for a fluffy asterisk volume
-    const numPlanes = 7;
+    const numPlanes = 4;
     for (let i = 0; i < numPlanes; i++) {
         addPlane((i / numPlanes) * Math.PI);
     }
@@ -941,7 +941,7 @@ function setupGrass() {
     
     setupGround();
 
-    const segments = 5;
+    const segments = 10;
 
     // Base geometry: simple plane strip
     const baseGeom = new THREE.PlaneGeometry(params.bladeWidth, params.bladeHeight, 1, segments);
@@ -1014,6 +1014,20 @@ updateWorldTransform();
 
 // 5. GUI Setup
 const gui = new GUI({ title: 'Grass Explorer' });
+gui.close();
+gui.hide();
+
+window.addEventListener('keydown', (event) => {
+    // Cmd+D or Ctrl+D to toggle GUI
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        if (gui._hidden) {
+            gui.show();
+        } else {
+            gui.hide();
+        }
+    }
+});
 
 const camFolder = gui.addFolder('Camera Settings');
 camFolder.add(params, 'frustumSize', 1, 30).onChange(updateCameraFrustum);
@@ -1085,8 +1099,8 @@ lightingDebugFolder.addColor(params, 'gradientHighlightColor').name('Highlights'
 
 const kuwaharaFolder = gui.addFolder('Kuwahara (Final Pass)');
 kuwaharaFolder.add(params, 'kuwaharaEnabled').name('Enabled');
-kuwaharaFolder.add(params, 'kuwaharaRadius', 1, 6).step(1).name('Radius X');
-kuwaharaFolder.add(params, 'kuwaharaRadiusY', 2, 16).step(1).name('Radius Y (stroke length)');
+kuwaharaFolder.add(params, 'kuwaharaRadius', 1, 16).step(1).name('Radius X');
+kuwaharaFolder.add(params, 'kuwaharaRadiusY', 1, 32).step(1).name('Radius Y (stroke length)');
 
 const grassFolder = gui.addFolder('Grass Geometry (Requires Regen)');
 grassFolder.add(params, 'bladeWidth', 0.01, 1.0);
@@ -1119,20 +1133,26 @@ let cursorInitialized = false;
 canvas.style.cursor = 'grab';
 
 window.addEventListener('mousemove', (event) => {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 });
 
 window.addEventListener('touchmove', (event) => {
     if (event.touches.length > 0) {
-        mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((event.touches[0].clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.touches[0].clientY - rect.top) / rect.height) * 2 + 1;
     }
 });
 
 // 6. Animation Loop
 const clock = new THREE.Clock();
 let lastRenderTime = 0;
+let previousTime = 0;
+let macroOffset = 0;
+let midOffset = 0;
+let detailOffset = 0;
 
 function animate() {
     requestAnimationFrame(animate);
@@ -1146,7 +1166,23 @@ function animate() {
     lastRenderTime = currentTime - (elapsed % fpsInterval);
     
     const elapsedTime = clock.getElapsedTime();
+    const deltaTime = elapsedTime - previousTime;
+    previousTime = elapsedTime;
+
+    // Slow random fluctuation for wind speeds
+    // Multiply maximum speed (current param) by a smoothly fluctuating value between 0.3 and 1.0
+    const fl1 = (Math.sin(elapsedTime * 0.5) + Math.sin(elapsedTime * 0.31 + 1.2) + Math.sin(elapsedTime * 0.73 + 2.4) + 3) / 6;
+    const fl2 = (Math.sin(elapsedTime * 0.7) + Math.sin(elapsedTime * 0.43 + 3.1) + Math.sin(elapsedTime * 0.89 + 5.5) + 3) / 6;
+    const fl3 = (Math.sin(elapsedTime * 0.9) + Math.sin(elapsedTime * 0.57 + 4.2) + Math.sin(elapsedTime * 1.13 + 1.8) + 3) / 6;
+
+    macroOffset += deltaTime * (params.macroSpeed * (0.3 + 0.7 * fl1));
+    midOffset += deltaTime * (params.midSpeed * (0.3 + 0.7 * fl2));
+    detailOffset += deltaTime * (params.detailSpeed * (0.3 + 0.7 * fl3));
+
     uniforms.uTime.value = elapsedTime;
+    uniforms.uMacroOffset.value = macroOffset;
+    uniforms.uMidOffset.value = midOffset;
+    uniforms.uDetailOffset.value = detailOffset;
     
     // Cursor Interaction Logic
     if (mouse.x !== -9999) {
@@ -1178,11 +1214,8 @@ function animate() {
     
     // Sync uniforms to GUI params
     uniforms.uMacroScale.value = params.macroScale;
-    uniforms.uMacroSpeed.value = params.macroSpeed;
     uniforms.uMidScale.value = params.midScale;
-    uniforms.uMidSpeed.value = params.midSpeed;
     uniforms.uDetailScale.value = params.detailScale;
-    uniforms.uDetailSpeed.value = params.detailSpeed;
     uniforms.uWindBend.value = params.windBend;
     uniforms.uGentleBreeze.value = params.gentleBreeze;
     uniforms.uBaseColor.value.set(params.baseColor);
